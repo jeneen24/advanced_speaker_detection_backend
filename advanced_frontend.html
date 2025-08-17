@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Speaker Detection System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ffd700, #ff6b35);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .connection-status.connected {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .connection-status .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .control-group {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .control-group h3 {
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            color: #ffd700;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #2196f3, #1976d2);
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .asr-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .asr-option {
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .asr-option.active {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            border-color: #ff9800;
+            color: white;
+        }
+
+        .asr-option:hover {
+            border-color: #fff;
+            transform: scale(1.05);
+        }
+
+        .devices-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .device-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        .device-item.in-use {
+            background: rgba(76, 175, 80, 0.2);
+            border-left: 4px solid #4caf50;
+        }
+
+        .speakers-grid {
+            display: grid;
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .speaker-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        .speaker-card.active {
+            background: rgba(76, 175, 80, 0.2);
+            transform: scale(1.02);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .speaker-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .speaker-name {
+            font-weight: 600;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speaker-status {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .intensity-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .intensity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 3px;
+            transition: width 0.2s ease;
+        }
+
+        .speaker-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+
+        .metric {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 8px;
+            border-radius: 5px;
+        }
+
+        .visualization-panel {
+            grid-column: span 2;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        #audioCanvas {
+            width: 100%;
+            height: 300px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+        }
+
+        .transcriptions-panel {
+            grid-column: span 2;
+            max-height: 400px;
+        }
+
+        .transcriptions-list {
+            max-height: 350px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .transcription-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .transcription-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .transcription-speaker {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .transcription-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        .transcription-text {
+            font-size: 1em;
+            line-height: 1.4;
+            margin: 8px 0;
+        }
+
+        .confidence-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .confidence-high {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+        }
+
+        .confidence-medium {
+            background: rgba(255, 152, 0, 0.3);
+            color: #ff9800;
+        }
+
+        .confidence-low {
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+
+        .system-stats {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #ffd700;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.6;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .visualization-panel,
+            .transcriptions-panel {
+                grid-column: span 1;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .asr-selector {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Advanced Speaker Detection System</h1>
+            <p class="subtitle">Professional ASR Integration with WebRTC VAD</p>
+            <div id="connectionStatus" class="connection-status disconnected">
+                <div class="status-dot" style="background: #f44336;"></div>
+                Connecting to backend...
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Controls Panel -->
+            <div class="panel controls-panel">
+                <h2>🎛️ System Controls</h2>
+                
+                <div class="control-group">
+                    <h3>Detection Control</h3>
+                    <div class="button-group">
+                        <button id="startBtn" class="btn btn-primary">
+                            ▶️ Start Detection
+                        </button>
+                        <button id="stopBtn" class="btn btn-danger" disabled>
+                            ⏹️ Stop Detection
+                        </button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>ASR Engine Selection</h3>
+                    <div class="asr-selector" id="asrSelector">
+                        <div class="asr-option" data-engine="whisper">
+                            🤖 Whisper (Local)
+                        </div>
+                        <div class="asr-option" data-engine="google">
+                            🔍 Google Speech-to-Text
+                        </div>
+                        <div class="asr-option" data-engine="openai">
+                            🧠 OpenAI Whisper API
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Audio Devices</h3>
+                    <div id="devicesList" class="devices-list">
+                        <div class="no-data">Loading devices...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Speakers Panel -->
+            <div class="panel">
+                <h2>👥 Active Speakers</h2>
+                <div id="speakersList" class="speakers-grid">
+                    <div class="no-data">No speakers connected</div>
+                </div>
+            </div>
+
+            <!-- Audio Visualization Panel -->
+            <div class="panel visualization-panel">
+                <h2>📊 Real-Time Audio Visualization</h2>
+                <canvas id="audioCanvas" width="800" height="300"></canvas>
+            </div>
+
+            <!-- Transcriptions Panel -->
+            <div class="panel transcriptions-panel">
+                <h2>📝 Live Transcriptions</h2>
+                <div id="transcriptionsList" class="transcriptions-list">
+                    <div class="no-data">Start detection to see transcriptions...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Statistics -->
+        <div class="system-stats">
+            <h3>📈 System Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="activeSpeakers">0</div>
+                    <div class="stat-label">Active Speakers</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="totalTranscriptions">0</div>
+                    <div class="stat-label">Total Transcriptions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="currentASR">-</div>
+                    <div class="stat-label">Current ASR</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="uptime">00:00</div>
+                    <div class="stat-label">Session Time</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AdvancedSpeakerDetectionClient {
+            constructor() {
+                this.websocket = null;
+                this.isConnected = false;
+                this.isRecording = false;
+                this.speakers = new Map();
+                this.transcriptions = [];
+                this.availableDevices = [];
+                this.availableASR = [];
+                this.currentASR = 'whisper';
+                this.sessionStartTime = null;
+                this.uptimeInterval = null;
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.connectToBackend();
+                this.startUptimeCounter();
+            }
+
+            initializeElements() {
+                this.connectionStatus = document.getElementById('connectionStatus');
+                this.startBtn = document.getElementById('startBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.asrSelector = document.getElementById('asrSelector');
+                this.devicesList = document.getElementById('devicesList');
+                this.speakersList = document.getElementById('speakersList');
+                this.transcriptionsList = document.getElementById('transcriptionsList');
+                this.audioCanvas = document.getElementById('audioCanvas');
+                this.canvasCtx = this.audioCanvas.getContext('2d');
+                
+                // Statistics elements
+                this.activeSpeakersCount = document.getElementById('activeSpeakers');
+                this.totalTranscriptionsCount = document.getElementById('totalTranscriptions');
+                this.currentASRDisplay = document.getElementById('currentASR');
+                this.uptimeDisplay = document.getElementById('uptime');
+            }
+
+            bindEvents() {
+                this.startBtn.addEventListener('click', () => this.startDetection());
+                this.stopBtn.addEventListener('click', () => this.stopDetection());
+                
+                // ASR engine selection
+                this.asrSelector.addEventListener('click', (e) => {
+                    const option = e.target.closest('.asr-option');
+                    if (option) {
+                        const engine = option.dataset.engine;
+                        this.switchASREngine(engine);
+                    }
+                });
+            }
+
+            async connectToBackend() {
+                try {
+                    this.updateConnectionStatus('connecting');
+                    this.websocket = new WebSocket('ws://localhost:8765');
+                    
+                    this.websocket.onopen = () => {
+                        this.isConnected = true;
+                        this.updateConnectionStatus('connected');
+                        console.log('Connected to backend');
+                    };
+                    
+                    this.websocket.onmessage = (event) => {
+                        const message = JSON.parse(event.data);
+                        this.handleBackendMessage(message);
+                    };
+                    
+                    this.websocket.onclose = () => {
+                        this.isConnected = false;
+                        this.updateConnectionStatus('disconnected');
+                        console.log('Disconnected from backend');
+                        
+                        // Attempt to reconnect after 3 seconds
+                        setTimeout(() => this.connectToBackend(), 3000);
+                    };
+                    
+                    this.websocket.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateConnectionStatus('error');
+                    };
+                    
+                } catch (error) {
+                    console.error('Error connecting to backend:', error);
+                    this.updateConnectionStatus('error');
+                    setTimeout(() => this.connectToBackend(), 5000);
+                }
+            }
+
+            updateConnectionStatus(status) {
+                const statusText = {
+                    connecting: 'Connecting to backend...',
+                    connected: 'Connected to backend',
+                    disconnected: 'Disconnected from backend',
+                    error: 'Connection error'
+                };
+                
+                const statusColors = {
+                    connecting: '#ff9800',
+                    connected: '#4caf50',
+                    disconnected: '#f44336',
+                    error: '#f44336'
+                };
+                
+                this.connectionStatus.className = `connection-status ${status}`;
+                this.connectionStatus.innerHTML = `
+                    <div class="status-dot" style="background: ${statusColors[status]};"></div>
+                    ${statusText[status]}
+                `;
+            }
+
+            sendMessage(message) {
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    this.websocket.send(JSON.stringify(message));
+                }
+            }
+
+            handleBackendMessage(message) {
+                switch (message.type) {
+                    case 'connected':
+                        this.availableDevices = message.available_devices || [];
+                        this.availableASR = message.available_asr || [];
+                        this.currentASR = message.current_asr || 'whisper';
+                        this.renderDevicesList();
+                        this.updateASRSelector();
+                        this.updateStatistics();
+                        break;
+                        
+                    case 'speaker_added':
+                        this.speakers.set(message.speaker.id, message.speaker);
+                        this.renderSpeakers();
+                        this.updateStatistics();
+                        break;
+                        
+                    case 'speaker_update':
+                        if (this.speakers.has(message.speaker_id)) {
+                            const speaker = this.speakers.get(message.speaker_id);
+                            speaker.intensity = message.intensity;
+                            speaker.is_active = message.is_active;
+                            speaker.peak_frequency = message.peak_frequency;
+                            this.renderSpeakers();
+                            this.updateStatistics();
+                        }
+                        break;
+                        
+                    case 'transcription':
+                        this.transcriptions.unshift(message.transcription);
+                        if (this.transcriptions.length > 50) {
+                            this.transcriptions = this.transcriptions.slice(0, 50);
+                        }
+                        this.renderTranscriptions();
+                        this.updateStatistics();
+                        break;
+                        
+                    case 'detection_started':
+                        this.isRecording = true;
+                        this.sessionStartTime = new Date();
+                        this.updateControlButtons();
+                        break;
+                        
+                    case 'detection_stopped':
+                        this.isRecording = false;
+                        this.speakers.clear();
+                        this.updateControlButtons();
+                        this.renderSpeakers();
+                        this.clearCanvas();
+                        break;
+                        
+                    case 'asr_switched':
+                        this.currentASR = message.engine;
+                        this.updateASRSelector();
+                        this.updateStatistics();
+                        break;
+                        
+                    case 'system_status':
+                        this.isRecording = message.is_recording;
+                        this.currentASR = message.current_asr;
+                        this.updateControlButtons();
+                        this.updateStatistics();
+                        break;
+                }
+            }
+
+            startDetection() {
+                if (!this.isConnected) {
+                    alert('Not connected to backend. Please wait for connection.');
+                    return;
+                }
+                
+                this.sendMessage({ type: 'start_detection' });
+            }
+
+            stopDetection() {
+                this.sendMessage({ type: 'stop_detection' });
+            }
+
+            addMicrophone(deviceId, deviceName) {
+                this.sendMessage({
+                    type: 'add_microphone',
+                    device_id: deviceId,
+                    device_name: deviceName
+                });
+            }
+
+            switchASREngine(engine) {
+                if (!this.availableASR.includes(engine)) {
+                    alert(`ASR engine ${engine} is not available.`);
+                    return;
+                }
+                
+                this.sendMessage({
+                    type: 'switch_asr',
+                    engine: engine
+                });
+            }
+
+            renderDevicesList() {
+                if (this.availableDevices.length === 0) {
+                    this.devicesList.innerHTML = '<div class="no-data">No audio devices found</div>';
+                    return;
+                }
+
+                this.devicesList.innerHTML = this.availableDevices.map(device => {
+                    const isInUse = Array.from(this.speakers.values()).some(speaker => 
+                        speaker.device_id === device.id.toString()
+                    );
+                    
+                    return `
+                        <div class="device-item ${isInUse ? 'in-use' : ''}">
+                            <div>
+                                <strong>${device.name}</strong>
+                                <br>
+                                <small>${device.channels} channels @ ${Math.round(device.sample_rate)}Hz</small>
+                            </div>
+                            <button class="btn btn-secondary" 
+                                    onclick="client.addMicrophone(${device.id}, '${device.name}')"
+                                    ${isInUse ? 'disabled' : ''}>
+                                ${isInUse ? '✓ Added' : '+ Add'}
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            renderSpeakers() {
+                if (this.speakers.size === 0) {
+                    this.speakersList.innerHTML = '<div class="no-data">No speakers connected</div>';
+                    return;
+                }
+
+                const speakersArray = Array.from(this.speakers.values())
+                    .sort((a, b) => b.intensity - a.intensity);
+
+                this.speakersList.innerHTML = speakersArray.map(speaker => `
+                    <div class="speaker-card ${speaker.is_active ? 'active' : ''}" 
+                         style="border-left-color: ${speaker.color}">
+                        <div class="speaker-header">
+                            <div class="speaker-name">
+                                <span style="color: ${speaker.color}">●</span>
+                                ${speaker.name}
+                                ${speaker.is_active ? '🎙️' : '🔇'}
+                            </div>
+                        </div>
+                        <div class="speaker-status">
+                            ${speaker.is_active ? 'Speaking' : 'Silent'}
+                        </div>
+                        <div class="intensity-bar">
+                            <div class="intensity-fill" style="width: ${speaker.intensity}%"></div>
+                        </div>
+                        <div class="speaker-metrics">
+                            <div class="metric">
+                                Intensity: ${speaker.intensity.toFixed(1)}%
+                            </div>
+                            <div class="metric">
+                                Peak: ${Math.round(speaker.peak_frequency)}Hz
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            renderTranscriptions() {
+                if (this.transcriptions.length === 0) {
+                    this.transcriptionsList.innerHTML = '<div class="no-data">Start detection to see transcriptions...</div>';
+                    return;
+                }
+
+                this.transcriptionsList.innerHTML = this.transcriptions.map(transcription => {
+                    const confidenceClass = transcription.confidence >= 0.8 ? 'confidence-high' :
+                                          transcription.confidence >= 0.5 ? 'confidence-medium' : 'confidence-low';
+                    
+                    const timeAgo = this.getTimeAgo(new Date(transcription.timestamp));
+                    
+                    return `
+                        <div class="transcription-item" style="border-left-color: ${this.getSpeakerColor(transcription.speaker_id)}">
+                            <div class="transcription-header">
+                                <div class="transcription-speaker">
+                                    <span style="color: ${this.getSpeakerColor(transcription.speaker_id)}">●</span>
+                                    ${transcription.speaker_name}
+                                </div>
+                                <div class="confidence-badge ${confidenceClass}">
+                                    ${(transcription.confidence * 100).toFixed(0)}%
+                                </div>
+                            </div>
+                            <div class="transcription-text">"${transcription.text}"</div>
+                            <div class="transcription-meta">
+                                <span>🤖 ${transcription.source.toUpperCase()}</span>
+                                <span>⏱️ ${transcription.audio_duration.toFixed(1)}s</span>
+                                <span>🌐 ${transcription.language}</span>
+                                <span>🕒 ${timeAgo}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            getSpeakerColor(speakerId) {
+                const speaker = this.speakers.get(speakerId);
+                return speaker ? speaker.color : '#666';
+            }
+
+            updateASRSelector() {
+                const options = this.asrSelector.querySelectorAll('.asr-option');
+                options.forEach(option => {
+                    const engine = option.dataset.engine;
+                    option.classList.toggle('active', engine === this.currentASR);
+                    option.style.display = this.availableASR.includes(engine) ? 'block' : 'none';
+                });
+            }
+
+            updateControlButtons() {
+                this.startBtn.disabled = !this.isConnected || this.isRecording;
+                this.stopBtn.disabled = !this.isConnected || !this.isRecording;
+            }
+
+            updateStatistics() {
+                const activeSpeakers = Array.from(this.speakers.values()).filter(s => s.is_active).length;
+                this.activeSpeakersCount.textContent = activeSpeakers;
+                this.totalTranscriptionsCount.textContent = this.transcriptions.length;
+                this.currentASRDisplay.textContent = this.currentASR.toUpperCase();
+            }
+
+            startUptimeCounter() {
+                this.uptimeInterval = setInterval(() => {
+                    if (this.sessionStartTime) {
+                        const uptime = new Date() - this.sessionStartTime;
+                        const minutes = Math.floor(uptime / 60000);
+                        const seconds = Math.floor((uptime % 60000) / 1000);
+                        this.uptimeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }, 1000);
+            }
+
+            clearCanvas() {
+                this.canvasCtx.fillStyle = '#1a1a1a';
+                this.canvasCtx.fillRect(0, 0, this.audioCanvas.width, this.audioCanvas.height);
+            }
+
+            getTimeAgo(timestamp) {
+                const seconds = Math.floor((Date.now() - timestamp.getTime()) / 1000);
+                if (seconds < 60) return `${seconds}s ago`;
+                const minutes = Math.floor(seconds / 60);
+                if (minutes < 60) return `${minutes}m ago`;
+                const hours = Math.floor(minutes / 60);
+                return `${hours}h ago`;
+            }
+        }
+
+        // Initialize the client
+        let client;
+        document.addEventListener('DOMContentLoaded', () => {
+            client = new AdvancedSpeakerDetectionClient();
+            window.client = client; // Make globally accessible
+        });
+    </script>
+</body>
+</html>
